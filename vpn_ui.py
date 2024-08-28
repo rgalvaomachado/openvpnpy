@@ -43,6 +43,24 @@ def import_ovpn():
 
 # Função para atualizar o status do arquivo importado
 def update_status():
+    # Lista as sessões OpenVPN ativas
+    result = subprocess.run(['openvpn3', 'sessions-list'], stdout=subprocess.PIPE, check=True)
+    output = result.stdout.decode('utf-8')
+
+    # Procura pelo caminho da sessão ativa
+    session_path = None
+    for line in output.splitlines():
+        if 'Path: ' in line:
+            session_path = line.split('Path: ')[1].strip()
+            break
+
+    if session_path:
+        vpn_status_label.config(text=f"Conectado")
+        update_vpn_status("Conectado")
+    else:
+        vpn_status_label.config(text=f"Desconectado")
+        update_vpn_status("Desconectado")
+
     ovpn_file = config_data.get('ovpn_file')
     if ovpn_file:
         # status_label.config(text=f"Arquivo importado: {os.path.basename(ovpn_file)}")
@@ -74,6 +92,7 @@ def connect_vpn():
             subprocess.run(['openvpn3', 'session-start', '--config', ovpn_file], check=True)
             messagebox.showinfo("Conectado", "Conectado à VPN com sucesso.")
             update_vpn_status("Conectado")
+            vpn_status_label.config(text=f"Conectado")
         except subprocess.CalledProcessError:
             messagebox.showerror("Erro", "Falha ao conectar à VPN.")
     else:
@@ -98,6 +117,7 @@ def disconnect_vpn():
             subprocess.run(['openvpn3', 'session-manage', '--session-path', session_path, '--disconnect'], check=True)
             messagebox.showinfo("Desconectado", "Desconectado da VPN com sucesso.")
             update_vpn_status("Desconectado")
+            vpn_status_label.config(text=f"Desconectado")
         else:
             messagebox.showinfo("Desconectado", "Nenhuma sessão VPN ativa encontrada.")
     except subprocess.CalledProcessError:
@@ -118,13 +138,16 @@ root = tk.Tk()
 root.title("OpenVpn")
 
 # Label para mostrar o status do arquivo importado
-vpn_status_label = tk.Label(root, text="Status VPN")
-vpn_status_label.pack(pady=5)
+vpn_status_title = tk.Label(root, text="Status VPN")
+vpn_status_title.pack(pady=5)
 
 # Canvas para mostrar o status da VPN
 vpn_status_canvas = tk.Canvas(root, width=50, height=50)
 vpn_status = vpn_status_canvas.create_oval(10, 10, 30, 30, fill="red")  # Vermelho indica desconectado
 vpn_status_canvas.pack(pady=10)
+
+vpn_status_label = tk.Label(root, text="")
+vpn_status_label.pack(pady=5)
 
 # Botão para conectar à VPN
 connect_button = tk.Button(root, text="Conectar VPN", command=connect_vpn)
